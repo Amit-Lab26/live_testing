@@ -6,6 +6,7 @@ import {
     type SeriesType,
     type SeriesMarker,
     type Time,
+    type LogicalRange,
     CrosshairMode,
     ColorType,
     CandlestickSeries,
@@ -456,18 +457,17 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
         const chart = chartRef.current;
         if (!chart) return;
 
-        const saveVisibleRange = () => {
-            const nextRange = chart.timeScale().getVisibleLogicalRange();
+        const saveVisibleRange = (nextRange: LogicalRange | null) => {
             if (nextRange) {
                 visibleRangeRef.current = nextRange;
             }
         };
 
-        saveVisibleRange();
-        const subscription = chart.timeScale().subscribeVisibleLogicalRangeChange(saveVisibleRange);
+        saveVisibleRange(chart.timeScale().getVisibleLogicalRange());
+        chart.timeScale().subscribeVisibleLogicalRangeChange(saveVisibleRange);
 
         return () => {
-            chart.timeScale().unsubscribeVisibleLogicalRangeChange(subscription);
+            chart.timeScale().unsubscribeVisibleLogicalRangeChange(saveVisibleRange);
         };
     }, [chartRef]);
 
@@ -484,7 +484,13 @@ const ChartPanel: React.FC<ChartPanelProps> = ({
         }
 
         const frame = window.requestAnimationFrame(() => {
-            chart.resize();
+            const panelBody = containerRef.current;
+            if (!panelBody) return;
+
+            const width = panelBody.clientWidth;
+            const height = panelBody.clientHeight;
+            chart.resize(width, height, true);
+
             if (visibleRangeRef.current) {
                 chart.timeScale().setVisibleLogicalRange(visibleRangeRef.current);
             } else {
